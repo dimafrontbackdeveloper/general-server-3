@@ -37,13 +37,14 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 	try {
 		const BASE_URL = sheetBaseUrl
 
+		// get accounts
 		const res = await fetch(`${BASE_URL}?action=getSheetRows`)
 		let { accounts } = await res.json()
 		console.log(accounts)
 		console.log('start')
 
-		let indexOfActiveAccount = findIndexOfActiveAccount(accounts)
-		const activeAccount = accounts[indexOfActiveAccount]
+		let indexOfActiveAccount = findIndexOfActiveAccount(accounts) // index of account with field 'isActive' true in sheet
+		const activeAccount = accounts[indexOfActiveAccount] // active account
 		console.log('activeAccount')
 		console.log(activeAccount)
 
@@ -53,23 +54,43 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 
 		let valueBets = null
 
-		if (logMessage) {
-			await fetch(
-				`https://alg-fox.net/api/v1/bot-client/connected/${activeAccount.botUuid}/`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						authorization: `bearer ${token}`,
-					},
-					body: JSON.stringify({
-						msg_type: 'PAUSE_BOT',
-						params: {},
-					}),
-				}
-			)
+		let oldIndexOfActiveAccount = indexOfActiveAccount
+		let isNeedToStartNextBot = true
 
-			// get bets of previous bot
+		do {
+			indexOfActiveAccount += 1
+			indexOfActiveAccount = checkIsNeedToReplaceIndexOfActiveAccountToZero(
+				indexOfActiveAccount,
+				accounts
+			)
+			if (oldIndexOfActiveAccount === indexOfActiveAccount) {
+				isNeedToStartNextBot = false
+			}
+		} while (
+			eval(accounts[indexOfActiveAccount].isNeedToCheck) ||
+			(eval(accounts[indexOfActiveAccount].isBalanceLessFlat) &&
+				oldIndexOfActiveAccount !== indexOfActiveAccount)
+		)
+
+		console.log('before pause')
+		await fetch(
+			`https://alg-fox.net/api/v1/bot-client/connected/${activeAccount.botUuid}/`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					authorization: `bearer ${token}`,
+				},
+				body: JSON.stringify({
+					msg_type: 'PAUSE_BOT',
+					params: {},
+				}),
+			}
+		)
+		console.log('after pause')
+
+		if (logMessage) {
+			// get bets of current bot
 			const handledForksResponce = await fetch(
 				`https://alg-fox.net/api/v1/bot-client/connected/${activeAccount.botUuid}/`,
 				{
@@ -89,21 +110,13 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 			)
 
 			const handledForksData = await handledForksResponce.json()
-
 			valueBets = handledForksData.handledForkList
 
-			do {
-				indexOfActiveAccount += 1
-				indexOfActiveAccount = checkIsNeedToReplaceIndexOfActiveAccountToZero(
-					indexOfActiveAccount,
-					accounts
-				)
-			} while (eval(accounts[indexOfActiveAccount].isNeedToCheck))
-			const oldAndNewAccountRes = await fetch(
-				`${BASE_URL}?action=replaceAccount`
-			)
-
 			if (logMessage === 'restrict') {
+				const oldAndNewAccountRes = await fetch(
+					`${BASE_URL}?action=replaceAccount`
+				)
+
 				const oldAndNewAccountData = await oldAndNewAccountRes.json()
 				const body = {
 					msg_type: 'LOAD_SETTINGS',
@@ -150,7 +163,7 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 					if (account.botUuid !== activeAccount.botUuid) {
 						return account
 					} else {
-						activeAccount['isNeedToCheck'] = 'true'
+						activeAccount['isBalanceLessFlat'] = 'true'
 						return activeAccount
 					}
 				})
@@ -203,22 +216,18 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 			}
 
 			if (logMessage === 'success bet') {
-				console.log('success bet eee')
+				console.log('success bet')
 			}
 
 			if (logMessage === 'skip') {
+				console.log('skip')
 			}
 		}
 
 		console.log('valueBets')
 		console.log(valueBets)
 
-		let newOrOldIndexActiveAccount =
-			checkIsNeedToReplaceIndexOfActiveAccountToZero(
-				indexOfActiveAccount,
-				accounts
-			)
-		const newOrOldActiveAccount = accounts[newOrOldIndexActiveAccount]
+		const newOrOldActiveAccount = accounts[indexOfActiveAccount]
 		console.log('newOrOldActiveAccount')
 		console.log(newOrOldActiveAccount)
 
@@ -248,27 +257,30 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 			}
 		}
 
-		// start bot
-		await fetch(
-			`https://alg-fox.net/api/v1/bot-client/connected/${newOrOldActiveAccount.botUuid}/`,
-			{
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					authorization: `bearer ${token}`,
-				},
-				body: JSON.stringify({
-					msg_type: 'START_BOT',
-					params: {},
-				}),
-			}
-		)
+		if (isNeedToStartNextBot) {
+			// start bot
+			await fetch(
+				`https://alg-fox.net/api/v1/bot-client/connected/${newOrOldActiveAccount.botUuid}/`,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						authorization: `bearer ${token}`,
+					},
+					body: JSON.stringify({
+						msg_type: 'START_BOT',
+						params: {},
+					}),
+				}
+			)
+		}
+
 		// push new accounts to the sheet
 		const newAccounts = accounts.map((account, i) => {
-			if (i !== newOrOldIndexActiveAccount) {
+			if (i !== indexOfActiveAccount) {
 				account['isActive'] = 'false'
 				return account
-			} else if (i === newOrOldIndexActiveAccount) {
+			} else if (i === indexOfActiveAccount) {
 				account['isActive'] = 'true'
 
 				return account

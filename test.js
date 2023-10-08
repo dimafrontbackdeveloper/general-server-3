@@ -59,7 +59,7 @@ const app = async () => {
 		const sheetBaseUrl =
 			'https://script.google.com/macros/s/AKfycbz4qmLhX1NTUdT_IuWd_y3rK5gh-NKo1B1F0Z80M6a6xOxwYCrCQQZ6M3aCtIPmFh34/exec'
 
-		const res = await fetch(`http://localhost:5000/startNextBot`, {
+		const res = await fetch(`https://hat-caridea.cyclic.app/startNextBot`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
