@@ -68,6 +68,7 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 			}
 		} while (
 			eval(accounts[indexOfActiveAccount].isNeedToCheck) ||
+			eval(accounts[indexOfActiveAccount].isRestrict) ||
 			(eval(accounts[indexOfActiveAccount].isBalanceLessFlat) &&
 				oldIndexOfActiveAccount !== indexOfActiveAccount)
 		)
@@ -113,46 +114,52 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 			valueBets = handledForksData.handledForkList
 
 			if (logMessage === 'restrict') {
-				const oldAndNewAccountRes = await fetch(
-					`${BASE_URL}?action=replaceAccount`
-				)
-
-				const oldAndNewAccountData = await oldAndNewAccountRes.json()
-				const body = {
-					msg_type: 'LOAD_SETTINGS',
-					params: {
-						settings: {
-							botSettingsBet: {},
-							botSettingsBk: {},
-							botSettingsCommon: {},
-						},
-					},
-				}
-				body.params.settings.botSettingsBk[bk] = {
-					authLogin: `${oldAndNewAccountData.data.newAccount[0]}`,
-					authPassword: `${oldAndNewAccountData.data.newAccount[1]}`,
-				}
-				const loadSettingsRes = await fetch(
-					`https://alg-fox.net/api/v1/bot-client/connected/${oldAndNewAccountData.data.oldAccount.botUuid}/`,
-					{
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							authorization: `bearer ${token}`,
-						},
-						body: JSON.stringify(body),
-					}
-				)
-
-				const loadSettingsData = await loadSettingsRes.json()
-
+				// old functional
+				// const oldAndNewAccountRes = await fetch(
+				// 	`${BASE_URL}?action=replaceAccount`
+				// )
+				// const oldAndNewAccountData = await oldAndNewAccountRes.json()
+				// const body = {
+				// 	msg_type: 'LOAD_SETTINGS',
+				// 	params: {
+				// 		settings: {
+				// 			botSettingsBet: {},
+				// 			botSettingsBk: {},
+				// 			botSettingsCommon: {},
+				// 		},
+				// 	},
+				// }
+				// body.params.settings.botSettingsBk[bk] = {
+				// 	authLogin: `${oldAndNewAccountData.data.newAccount[0]}`,
+				// 	authPassword: `${oldAndNewAccountData.data.newAccount[1]}`,
+				// }
+				// const loadSettingsRes = await fetch(
+				// 	`https://alg-fox.net/api/v1/bot-client/connected/${oldAndNewAccountData.data.oldAccount.botUuid}/`,
+				// 	{
+				// 		method: 'POST',
+				// 		headers: {
+				// 			'Content-Type': 'application/json',
+				// 			authorization: `bearer ${token}`,
+				// 		},
+				// 		body: JSON.stringify(body),
+				// 	}
+				// )
+				// const loadSettingsData = await loadSettingsRes.json()
+				// accounts = accounts.map(account => {
+				// 	if (account.botUuid !== activeAccount.botUuid) {
+				// 		return account
+				// 	} else {
+				// 		activeAccount['login'] = oldAndNewAccountData.data.newAccount[0]
+				// 		activeAccount['password'] = oldAndNewAccountData.data.newAccount[1]
+				// 		activeAccount['isHasLimit'] = 'false'
+				// 		return activeAccount
+				// 	}
+				// })
 				accounts = accounts.map(account => {
 					if (account.botUuid !== activeAccount.botUuid) {
 						return account
 					} else {
-						activeAccount['login'] = oldAndNewAccountData.data.newAccount[0]
-						activeAccount['password'] = oldAndNewAccountData.data.newAccount[1]
-						activeAccount['isHasLimit'] = 'false'
+						activeAccount['isRestrict'] = true
 						return activeAccount
 					}
 				})
@@ -418,8 +425,8 @@ app.post('/settings', async (req, res) => {
 		body.params.settings.botSettingsBk[bk]['authLogin'] = account.login
 		body.params.settings.botSettingsBk[bk]['authPassword'] = account.password
 		body.params.settings.botSettingsBk[bk]['betAmount'] = [
-			Number(account.initialFlat),
-			Number(account.initialFlat),
+			Number(account.flat),
+			Number(account.flat),
 		]
 
 		const loadSettingsRes = await fetch(
