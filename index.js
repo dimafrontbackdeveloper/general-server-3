@@ -222,8 +222,8 @@ async function startNextBot(token, sheetBaseUrl, bk, logMessage = '') {
 				})
 			}
 
-			if (logMessage === 'success bet') {
-				console.log('success bet')
+			if (logMessage === 'successBet') {
+				console.log('successBet')
 			}
 
 			if (logMessage === 'skip') {
@@ -409,6 +409,12 @@ app.put('/accounts', async (req, res) => {
 			newAccounts: req.body.accounts,
 		}),
 	})
+
+	res.json({
+		data: false,
+	})
+
+	console.log('asccsa')
 })
 
 app.post('/settings', async (req, res) => {
