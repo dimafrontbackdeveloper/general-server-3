@@ -71,7 +71,7 @@ const app = async () => {
 				logMessage: 'successBet',
 			}),
 		})
-
+		// csasca
 		const data = await res.json()
 		console.log(JSON.stringify(data))
 	} catch (error) {
